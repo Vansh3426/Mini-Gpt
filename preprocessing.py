@@ -43,6 +43,7 @@ sp = spm.SentencePieceProcessor()
 sp.load('Mini_gpt/tokenizer_files/mini_gpt_tokenizer.model')
 vocab_size =sp.GetPieceSize()
 
+
 # Text to ids function 
 
 def encoding(text):

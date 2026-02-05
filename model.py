@@ -1,15 +1,19 @@
 import torch 
 from torch import nn
-from model_dataset import mydataloader
+from model_dataset import mydataloader ,valdataloader
+from preprocessing import sp , vocab_size
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+torch.cuda.manual_seed(42)
+torch.manual_seed(42)
 
 block_size = 8
-vocab_size = 1000
 
-torch.manual_seed(42)
 
 class Masked_multihead_attention(nn.Module):
     
-    def __init__(self , vocab_size , embed_dim ,n_head ):
+    def __init__(self , vocab_size , embed_dim ,n_head  ,dropout):
         super().__init__()
 
         self.embed = embed_dim
@@ -22,6 +26,7 @@ class Masked_multihead_attention(nn.Module):
         self.k = nn.Linear( embed_dim ,embed_dim )
         self.v = nn.Linear( embed_dim ,embed_dim )
         
+        self.dropout =nn.Dropout(dropout)
         self.register_buffer('tril' ,torch.tril(torch.ones(block_size , block_size)))    
     
     def forward(self, x ):
@@ -29,7 +34,9 @@ class Masked_multihead_attention(nn.Module):
         B , T  = x.shape
         
         x_embed = self.embed(x)
-        x_pos = self.positional_embed(torch.arange(T))
+       
+        pos = torch.arange(T ,device=x.device)
+        x_pos = self.positional_embed(pos)
         x_embeddings = x_embed + x_pos
     
  
@@ -37,66 +44,173 @@ class Masked_multihead_attention(nn.Module):
         key =self.k(x_embeddings)
         value =self.v(x_embeddings)
           
-        print(key.shape)
-        print(query.shape)
-        print(value.shape)
+        # print(key.shape)
+        # print(query.shape)
+        # print(value.shape)
         
         query =query.view(B , T , self.n_head ,self.head_size).transpose(1,2)
         key =key.view(B , T , self.n_head ,self.head_size).transpose(1,2)
         value =value.view(B , T , self.n_head ,self.head_size).transpose(1,2)
-        print(key.shape)
-        print(query.shape)
-        print(value.shape)
+        # print(key.shape)
+        # print(query.shape)
+        # print(value.shape)
         
         
         wei = query @ key.transpose(-2,-1)
-        print(wei.shape)
+        # print(wei.shape)
         
   
         
         wei = wei.masked_fill(self.tril[:T ,:T] == 0 , float('-inf'))
         
-        wei = wei / torch.sqrt(torch.tensor(self.head_size))
+        wei = wei /(self.head_size ** 0.5)
         
         softmax_wei = torch.softmax(wei , dim=-1)
+        dropout_wei = self.dropout(softmax_wei)
         
-        final_wei = softmax_wei @ value
+        final_wei = dropout_wei @ value
         
         out = final_wei.transpose(1, 2).contiguous().view(B, T, -1)
 
-        print(out.shape)
+        # print(out.shape)
         
         return out
     
-# a = torch.tril(torch.ones(3,3))
-# a = a / torch.sum(a ,1 , keepdim =True)
-# b = torch.randint(0,10,(3,3)).float()
+    
+    
+class Feed_forward(nn.Module):
+    
+    def __init__(self , embed_dim ,dropout ):
+        super().__init__()
+        
+        self.layer =nn.Sequential(
+            nn.Linear(in_features = embed_dim , out_features=4 * embed_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(in_features = 4 * embed_dim , out_features=embed_dim),
+            nn.Dropout(dropout)
+            
+        )
+        
+        
+    def forward(self ,x ):
+        
+        x = self.layer(x)
 
-# c = a @ b
+        
+        return x 
+        
+        
+
+class Layer_norm(nn.Module):
+    
+    def __init__(self , embedding_dim , eps =1e-5):
+        
+        super().__init__()
+        
+        self.gamma =nn.Parameter(torch.ones(embedding_dim))
+        self.beta =nn.Parameter(torch.zeros(embedding_dim))
+        self.eps =eps
+        
+    def forward(self , x):
+        
+        # x.shape = batch_size , seq_length , embedding_dim 
+        
+        
+        mean = x.mean(dim=-1 , keepdim =True)
+        var = x.var(dim=-1 ,keepdim=True ,unbiased=False)
+        
+        x_hat = (x - mean)/torch.sqrt(var + self.eps)
+        
+        x_norm = self.gamma * x_hat + self.beta
+        
+        return x_norm
+    
+        
+    
+class Decoder_block(nn.Module):
+    
+    def __init__(self ,vocab_size , embed_dim ,n_head ,dropout =0.1):
+        super().__init__()
+        
+        self.attention = Masked_multihead_attention(vocab_size,embed_dim,n_head,dropout).to(device)
+        self.norm = Layer_norm(embedding_dim=embed_dim)
+        self.ff = Feed_forward(embed_dim,dropout).to(device)
+        self.linear =nn.Linear(embed_dim ,vocab_size)
+    def forward(self , x):
+        
+        x = self.attention(x)
+        x  = self.norm(x)
+        x = x + self.ff(x)
+        x = self.linear(x)
+        
+        return x
+        
+
+if __name__ == '__main__':
+        
+    model = Decoder_block(vocab_size , embed_dim=128 , n_head=16).to(device)
+
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters() , lr = 0.0001)
 
 
-# print(a)
-# print(b)
-# print(c)
+    epochs = 100
+    best_loss =float('inf')
 
+    for epoch in range(epochs):
+        
+        model.train()
 
+        total_loss =  0
+        
+        
+        for x,y in mydataloader:
+            
+            x , y = x.to(device) , y.to(device)
+            
+            logits = model(x)
 
-# trill = torch.tril(torch.ones(3,3))
-# wei = torch.zeros(3,3)
-# wei= wei.masked_fill(trill == 0 , float('-inf'))
-# new = torch.softmax(wei , dim =-1)
+            optimizer.zero_grad()
+            
+            loss = loss_fn(logits.reshape(-1,logits.size(-1)) ,y.reshape(-1))
+            
+            total_loss += loss.item()
+            
+            
+            loss.backward()
+            
+            optimizer.step()
+            
+        
+                  
+        print(f' Epoch :{epoch}     |     loss : {total_loss/len(mydataloader)}') 
+        
+        avg_loss = total_loss / len(mydataloader)
 
-# x = torch.randint(0,10,(3,3)).float()
+        if avg_loss < best_loss:
+            best_loss =avg_loss
+            torch.save(model.state_dict() ,'Mini_gpt/saved_model_and_files/trained_model_37k.pth')
+                
+        
+                
+    model.eval()
 
-# output = new @ x
+    with torch.inference_mode():
+        
 
-
-
-# print(new)
-# print(output)
-
-x = torch.randint(1,10,(1 ,8))
-
-model = Masked_multihead_attention(vocab_size , embed_dim=32 , n_head=4)
-
-output = model(x)
+        total_val_loss =  0
+        
+        for x,y in valdataloader:
+            
+            x , y = x.to(device) , y.to(device)
+            
+            logits = model(x)
+            
+            loss = loss_fn(logits.reshape(-1,logits.size(-1)) ,y.reshape(-1))
+            
+            total_val_loss += loss.item()
+            
+                
+            
+        print(f' val loss : {total_val_loss/len(valdataloader)}')

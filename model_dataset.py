@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import Dataset,DataLoader
-from preprocessing import train_input_ids
+from preprocessing import train_input_ids ,val_input_ids
 
 
 
@@ -25,15 +25,15 @@ class model_dataset(Dataset):
         
 
 mydataset = model_dataset(train_input_ids ,blocksize=8)
-
+myvaldataset =model_dataset(val_input_ids ,blocksize=8)
 # x,y = next(iter(mydataset))
 
 # print(x)
 # print(y)
 
 
-mydataloader = DataLoader(dataset=mydataset , batch_size=32 ,shuffle=True)
-
+mydataloader = DataLoader(dataset=mydataset , batch_size=64 ,shuffle=True )
+valdataloader =DataLoader(dataset=myvaldataset ,batch_size=64)
 # count = 0
 
 # for x ,y in mydataloader:

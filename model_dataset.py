@@ -1,15 +1,13 @@
 import torch
-from torch.utils.data import Dataset,DataLoader
-from preprocessing import train_input_ids ,val_input_ids
-
-
+from torch.utils.data import Dataset
 
 class model_dataset(Dataset):
     
     def __init__(self ,tokens , blocksize):
         
         super().__init__()
-        
+        if not torch.is_tensor(tokens):
+            tokens = torch.tensor(tokens, dtype=torch.long)
         self.tokens = tokens
         self.blocksize = blocksize
     
@@ -24,16 +22,13 @@ class model_dataset(Dataset):
         return x,y
         
 
-mydataset = model_dataset(train_input_ids ,blocksize=8)
-myvaldataset =model_dataset(val_input_ids ,blocksize=8)
+
 # x,y = next(iter(mydataset))
 
 # print(x)
 # print(y)
 
 
-mydataloader = DataLoader(dataset=mydataset , batch_size=64 ,shuffle=True )
-valdataloader =DataLoader(dataset=myvaldataset ,batch_size=64)
 # count = 0
 
 # for x ,y in mydataloader:

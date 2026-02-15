@@ -1,14 +1,18 @@
 import torch 
 from torch import nn
-from model_dataset import mydataloader ,valdataloader
-from preprocessing import sp , vocab_size
+from model_dataset import model_dataset
+from torch.utils.data import DataLoader
+
+vocab_size =16000
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
+if device == "cuda":
+    torch.zeros(1, device=device)
+    
 torch.cuda.manual_seed(42)
 torch.manual_seed(42)
 
-block_size = 8
+block_size = 32
 
 
 class Masked_multihead_attention(nn.Module):
@@ -84,10 +88,10 @@ class Feed_forward(nn.Module):
         super().__init__()
         
         self.layer =nn.Sequential(
-            nn.Linear(in_features = embed_dim , out_features=4 * embed_dim),
+            nn.Linear(in_features = embed_dim , out_features=2 * embed_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(in_features = 4 * embed_dim , out_features=embed_dim),
+            nn.Linear(in_features = 2 * embed_dim , out_features=embed_dim),
             nn.Dropout(dropout)
             
         )
@@ -133,9 +137,9 @@ class Decoder_block(nn.Module):
     def __init__(self ,vocab_size , embed_dim ,n_head ,dropout =0.1):
         super().__init__()
         
-        self.attention = Masked_multihead_attention(vocab_size,embed_dim,n_head,dropout).to(device)
+        self.attention = Masked_multihead_attention(vocab_size,embed_dim,n_head,dropout)
         self.norm = Layer_norm(embedding_dim=embed_dim)
-        self.ff = Feed_forward(embed_dim,dropout).to(device)
+        self.ff = Feed_forward(embed_dim,dropout)
         self.linear =nn.Linear(embed_dim ,vocab_size)
     def forward(self , x):
         
@@ -146,16 +150,27 @@ class Decoder_block(nn.Module):
         
         return x
         
+     
 
 if __name__ == '__main__':
         
-    model = Decoder_block(vocab_size , embed_dim=128 , n_head=16).to(device)
+    model = Decoder_block(vocab_size , embed_dim=64 , n_head=4).to(device)
 
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters() , lr = 0.0001)
+    
+    train_input_ids = torch.load("Mini_gpt/saved_tokens/train_ids.pt")
+    val_input_ids = torch.load("Mini_gpt/saved_tokens/val_ids.pt")
 
+    
+    mydataset = model_dataset(train_input_ids ,block_size)
+    myvaldataset =model_dataset(val_input_ids ,block_size)
+    
+    mydataloader = DataLoader(dataset=mydataset , batch_size=512 ,shuffle=True ,pin_memory=True)
+    valdataloader =DataLoader(dataset=myvaldataset ,batch_size=512 ,pin_memory=True)
 
-    epochs = 100
+    
+    epochs = 20
     best_loss =float('inf')
 
     for epoch in range(epochs):
@@ -184,33 +199,34 @@ if __name__ == '__main__':
             
         
                   
-        print(f' Epoch :{epoch}     |     loss : {total_loss/len(mydataloader)}') 
+       
         
         avg_loss = total_loss / len(mydataloader)
 
         if avg_loss < best_loss:
             best_loss =avg_loss
-            torch.save(model.state_dict() ,'Mini_gpt/saved_model_and_files/trained_model_37k.pth')
+            torch.save(model.state_dict() ,'Mini_gpt/saved_model_and_files/trained_model_5k.pth')
                 
         
                 
-    model.eval()
+        model.eval()
 
-    with torch.inference_mode():
-        
+        with torch.inference_mode():
+            
 
-        total_val_loss =  0
-        
-        for x,y in valdataloader:
+            total_val_loss =  0
             
-            x , y = x.to(device) , y.to(device)
-            
-            logits = model(x)
-            
-            loss = loss_fn(logits.reshape(-1,logits.size(-1)) ,y.reshape(-1))
-            
-            total_val_loss += loss.item()
-            
+            for x1,y1 in valdataloader:
                 
+                x1 , y1 = x1.to(device) , y1.to(device)
+                
+                logits = model(x1)
+                
+                loss = loss_fn(logits.reshape(-1,logits.size(-1)) ,y1.reshape(-1))
+                
+                total_val_loss += loss.item()
+                
+                    
+            print(f' Epoch :{epoch}     |     loss : {total_loss/len(mydataloader)}    val loss : {total_val_loss/len(valdataloader)}')    
+        
             
-        print(f' val loss : {total_val_loss/len(valdataloader)}')

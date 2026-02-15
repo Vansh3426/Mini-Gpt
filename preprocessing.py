@@ -2,6 +2,9 @@ import torch
 from datasets import load_dataset
 import sentencepiece as spm
 import re
+import time 
+
+t0 = time.time()
 
 # train_ds =load_dataset('Salesforce/wikitext',"wikitext-2-v1" ,split="train")
 # val_ds =load_dataset('Salesforce/wikitext',"wikitext-2-v1" ,split="validation")
@@ -30,19 +33,17 @@ import re
         # text = row["text"].strip()
         # f.write(text + '\n')
         
-with open('Mini_gpt/model_dataset/train_dataset.txt' , mode='r' , encoding='utf-8') as f :
-        train_data = f.read()
-        train_dataset = train_data[:36700]
+with open('Mini_gpt/model_dataset/train_short.txt' , mode='r' , encoding='utf-8') as f :
+        train_dataset = f.read()
         train_dataset =train_dataset.replace("<unk>", "")
         train_dataset = re.sub(r'@{2,}', '@', train_dataset)
         train_dataset = re.sub(r'([=@#<>])\1{2,}', r'\1', train_dataset)
 
-with open('Mini_gpt/model_dataset/val_dataset.txt' , mode='r' , encoding='utf-8') as f :
+with open('Mini_gpt/model_dataset/val_short.txt' , mode='r' , encoding='utf-8') as f :
         val_dataset = f.read()
         val_dataset =val_dataset.replace("<unk>", "")
         val_dataset = re.sub(r'@{2,}', '@', val_dataset)
         val_dataset = re.sub(r'([=@#<>])\1{2,}', r'\1', val_dataset)
-
 
 
 # spm.SentencePieceTrainer.Train(input = "Mini_gpt/model_dataset/train_dataset.txt",
@@ -68,5 +69,9 @@ train_input_ids = torch.tensor(encoding(train_dataset))
 val_input_ids =torch.tensor(encoding(val_dataset))
 
 # print(train_input_ids[:30])
+print("Preprocessing time:", time.time() - t0)
 
- 
+if __name__ == "__main__":
+    
+    torch.save(train_input_ids, "Mini_gpt/saved_tokens/train_ids.pt")
+    torch.save(val_input_ids, "Mini_gpt/saved_tokens/val_ids.pt")

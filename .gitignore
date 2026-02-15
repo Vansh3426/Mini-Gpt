@@ -3,3 +3,4 @@ __init__.py
 model_dataset
 tokenizer_files
 __pycache__
+saved_tokens

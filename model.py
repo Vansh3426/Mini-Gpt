@@ -1,6 +1,6 @@
 import torch 
 from torch import nn
-from model_dataset import model_dataset
+from Mini_gpt.model_dataset_class import model_dataset
 from torch.utils.data import DataLoader
 
 vocab_size =16000
@@ -12,8 +12,9 @@ if device == "cuda":
 torch.cuda.manual_seed(42)
 torch.manual_seed(42)
 
-block_size = 32
+block_size = 16
 
+print("Script started")
 
 class Masked_multihead_attention(nn.Module):
     
@@ -88,10 +89,10 @@ class Feed_forward(nn.Module):
         super().__init__()
         
         self.layer =nn.Sequential(
-            nn.Linear(in_features = embed_dim , out_features=2 * embed_dim),
+            nn.Linear(in_features = embed_dim , out_features= 2 * embed_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(in_features = 2 * embed_dim , out_features=embed_dim),
+            nn.Linear(in_features = 2 * embed_dim , out_features= embed_dim),
             nn.Dropout(dropout)
             
         )
@@ -157,7 +158,7 @@ if __name__ == '__main__':
     model = Decoder_block(vocab_size , embed_dim=64 , n_head=4).to(device)
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters() , lr = 0.0001)
+    optimizer = torch.optim.AdamW(model.parameters() , lr = 0.0003 , weight_decay=0.01)
     
     train_input_ids = torch.load("Mini_gpt/saved_tokens/train_ids.pt")
     val_input_ids = torch.load("Mini_gpt/saved_tokens/val_ids.pt")
@@ -196,17 +197,7 @@ if __name__ == '__main__':
             loss.backward()
             
             optimizer.step()
-            
-        
-                  
-       
-        
-        avg_loss = total_loss / len(mydataloader)
-
-        if avg_loss < best_loss:
-            best_loss =avg_loss
-            torch.save(model.state_dict() ,'Mini_gpt/saved_model_and_files/trained_model_5k.pth')
-                
+              
         
                 
         model.eval()
@@ -226,7 +217,13 @@ if __name__ == '__main__':
                 
                 total_val_loss += loss.item()
                 
+            avg_loss = total_val_loss / len(valdataloader)
+
+            if avg_loss < best_loss:
+                best_loss =avg_loss
+                torch.save(model.state_dict() ,'Mini_gpt/saved_model_and_files/trained_model_5k.pth')
+              
                     
-            print(f' Epoch :{epoch}     |     loss : {total_loss/len(mydataloader)}    val loss : {total_val_loss/len(valdataloader)}')    
+        print(f' Epoch :{epoch}     |     loss : {total_loss/len(mydataloader)}    val loss : {total_val_loss/len(valdataloader)}')    
         
             

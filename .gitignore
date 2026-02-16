@@ -1,6 +1,4 @@
-saved_model_and_files
+
 __init__.py
-model_dataset
-tokenizer_files
 __pycache__
-saved_tokens
+model_dataset

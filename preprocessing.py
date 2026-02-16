@@ -33,13 +33,13 @@ t0 = time.time()
         # text = row["text"].strip()
         # f.write(text + '\n')
         
-with open('Mini_gpt/model_dataset/train_short.txt' , mode='r' , encoding='utf-8') as f :
+with open('Mini_gpt/model_dataset/train_dataset.txt' , mode='r' , encoding='utf-8') as f :
         train_dataset = f.read()
         train_dataset =train_dataset.replace("<unk>", "")
         train_dataset = re.sub(r'@{2,}', '@', train_dataset)
         train_dataset = re.sub(r'([=@#<>])\1{2,}', r'\1', train_dataset)
 
-with open('Mini_gpt/model_dataset/val_short.txt' , mode='r' , encoding='utf-8') as f :
+with open('Mini_gpt/model_dataset/val_dataset.txt' , mode='r' , encoding='utf-8') as f :
         val_dataset = f.read()
         val_dataset =val_dataset.replace("<unk>", "")
         val_dataset = re.sub(r'@{2,}', '@', val_dataset)
@@ -73,5 +73,7 @@ print("Preprocessing time:", time.time() - t0)
 
 if __name__ == "__main__":
     
+    print(train_input_ids.shape)
+    print(val_input_ids.shape)
     torch.save(train_input_ids, "Mini_gpt/saved_tokens/train_ids.pt")
     torch.save(val_input_ids, "Mini_gpt/saved_tokens/val_ids.pt")

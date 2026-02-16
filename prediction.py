@@ -5,7 +5,7 @@ from preprocessing import sp ,vocab_size
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-block_size = 32
+block_size = 16
 
 model = Decoder_block(vocab_size , embed_dim=64 , n_head=4).to(device)
 model.load_state_dict(torch.load('Mini_gpt/saved_model_and_files/trained_model_5k.pth'))
@@ -13,7 +13,7 @@ model.load_state_dict(torch.load('Mini_gpt/saved_model_and_files/trained_model_5
 
 model.eval()
 maxlength = 50
-text = 'how'
+text = ' The fort main armament '
 
 
 
@@ -45,5 +45,5 @@ output = generate(text , maxlength)
 
 print(output)
         
-        
+
     

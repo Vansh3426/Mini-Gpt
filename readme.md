@@ -124,12 +124,79 @@ Mini_gpt/
 ├── saved_tokens/           # Preprocessed token tensors
 ├── saved_model_and_files/  # Trained model weights
 
-🚀 How to Train
-python model.py
 
-🔮 Text Generation
 
-(This section intentionally left for future improvement with advanced decoding techniques such as Top-k sampling and Temperature scaling.)
+🔮 Text Generation (Prediction Pipeline)
+
+∘ This project includes a fully functional autoregressive text generation script implemented in prediction.py.
+∘ The generation pipeline loads the trained GPT-style decoder model and produces text token-by-token using probabilistic sampling.
+
+⚙️ Generation Setup
+
+∘ Model: Trained Decoder-only Transformer
+∘ Embedding Dimension: 64
+∘ Heads: 4
+∘ Block Size: 16
+∘ Tokenizer: SentencePiece (vocab = 16,000)
+∘ Device: CUDA (if available) else CPU
+∘ Default Max Length: 50 tokens
+∘ The model weights are loaded from: Mini_gpt/saved_model_and_files/trained_model_full_dataset.pth
+
+🧠 Generation Algorithm
+
+The generation function follows standard autoregressive decoding:
+
+1️⃣ Encode input text using SentencePiece
+2️⃣ Convert tokens to tensor and move to device
+3️⃣ Loop until maxlength is reached:
+
+∘ Take last block_size tokens
+∘ Forward pass through model
+∘ Extract logits for last token
+∘ Apply softmax to get probability distribution
+∘ Sample next token using torch.multinomial
+∘ Append token to sequence
+
+4️⃣ Decode full token sequence back to text
+
+🧪 Decoding Strategy
+
+∘ Current decoding method: Softmax → Multinomial Sampling
+
+∘ This allows stochastic text generation instead of deterministic greedy decoding.
+
+∘ The script also includes a commented greedy alternative: torch.argmax(...)
+
+📌 Example Prompt
+
+∘ text = " what is the  "
+∘ maxlength = 50
+
+∘ output :-
+what is the American Civil Service Department of Asian Studies , has been @-@ based on the two world can meet and bull in the 1906 Summer Olympics . The statistics is a tropical depression moved across the Pacific and Northern Ireland . The Autumn areas and caused by the Pope ..
+
+∘ The model will continue generating text for up to 50 tokens.
+∘ The symbols @-@ are denoting a hyphen(-) ; Another Example , if there is @+@ , it denotes the addition symbol(+).
+
+🚀 How to Generate Text
+
+Run:
+
+python prediction.py
+
+The script will:
+
+∘Load trained model
+∘ Generate text from prompt
+∘ Print final output
+
+🔍 Important Notes
+
+∘ Context window is limited to block_size = 16
+∘ Model always conditions on the last 16 tokens
+∘ Uses autoregressive causal masking
+∘ Sampling randomness may produce different outputs per run
+
 
 🧠 Key Learnings
 

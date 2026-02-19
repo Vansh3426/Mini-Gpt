@@ -8,13 +8,12 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 block_size = 16
 
 model = Decoder_block(vocab_size , embed_dim=64 , n_head=4).to(device)
-model.load_state_dict(torch.load('Mini_gpt/saved_model_and_files/trained_model_5k.pth'))
+model.load_state_dict(torch.load('Mini_gpt/saved_model_and_files/trained_model_full_dataset.pth'))
 
 
 model.eval()
 maxlength = 50
-text = ' The fort main armament '
-
+text = ' what is the  '
 
 
 def generate(text, maxlength):
@@ -29,10 +28,15 @@ def generate(text, maxlength):
         idx_cond = decoder_input[:, -block_size:]
         logits = model(idx_cond)
         
-        next_token = logits[: ,-1 ,:]
+        logits= logits[: ,-1 ,:]
+            
+        probs = torch.softmax(logits, dim=-1)
         
-        next_token_tensor = torch.argmax(next_token , dim=-1).unsqueeze(dim=1)       
+        next_token_tensor = torch.multinomial(probs ,1)
+         
+        # next_token_tensor = torch.argmax(next_token , dim=-1).unsqueeze(dim=1)       
         # print(next_token_tensor.shape)
+        
         decoder_input= torch.cat( (decoder_input , next_token_tensor),dim=1)
     
     token_ids = decoder_input[0].tolist()

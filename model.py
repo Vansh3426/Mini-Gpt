@@ -1,6 +1,6 @@
 import torch 
 from torch import nn
-from Mini_gpt.model_dataset_class import model_dataset
+from model_dataset_class import model_dataset
 from torch.utils.data import DataLoader
 
 vocab_size =16000
@@ -221,7 +221,7 @@ if __name__ == '__main__':
 
             if avg_loss < best_loss:
                 best_loss =avg_loss
-                torch.save(model.state_dict() ,'Mini_gpt/saved_model_and_files/trained_model_5k.pth')
+                torch.save(model.state_dict() ,'Mini_gpt/saved_model_and_files/trained_model_full_dataset.pth')
               
                     
         print(f' Epoch :{epoch}     |     loss : {total_loss/len(mydataloader)}    val loss : {total_val_loss/len(valdataloader)}')    
